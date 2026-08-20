@@ -1,0 +1,22 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.db
+*.db-shm
+*.db-wal
+
+# Node / Nuxt
+node_modules/
+.nuxt/
+.output/
+.data/
+.env
+dist/
+
+# Editor / OS
+.idea/
+.DS_Store
+Thumbs.db

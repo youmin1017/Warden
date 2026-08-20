@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Warden.Application/Warden.Application.csproj" />
+    <Project Path="src/Warden.Domain/Warden.Domain.csproj" />
+    <Project Path="src/Warden.Infrastructure/Warden.Infrastructure.csproj" />
+    <Project Path="src/Warden.WebApi/Warden.WebApi.csproj" />
+  </Folder>
+</Solution>
