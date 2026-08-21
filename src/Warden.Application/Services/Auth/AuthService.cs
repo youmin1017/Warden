@@ -12,6 +12,7 @@ public class AuthService(AppDbContext db, ITokenService tokenService, IPermissio
     {
         var normalizedEmail = request.Email.Trim().ToUpperInvariant();
         var user = await db.Users
+            .AsNoTracking()
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, ct);
 
@@ -26,18 +27,26 @@ public class AuthService(AppDbContext db, ITokenService tokenService, IPermissio
     public async Task<TokenPairDto> RefreshAsync(RefreshRequest request, CancellationToken ct = default)
     {
         var hash = tokenService.HashToken(request.RefreshToken);
-        var existing = await db.RefreshTokens
-            .Include(t => t.User).ThenInclude(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
+        var existing = await db.RefreshTokens.FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
 
         if (existing is null || !existing.IsActive)
         {
             throw new UnauthorizedAppException("Refresh token is invalid or expired.");
         }
 
+        // Projected instead of `.Include(t => t.User).ThenInclude(u => u.UserRoles).ThenInclude(ur => ur.Role)`:
+        // that Include tracked the whole user+role graph just to read two values, and fanned the
+        // single-row RefreshToken lookup out into a multi-join result set.
+        var user = await db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == existing.UserId)
+            .Select(u => new { u.Email, Roles = u.UserRoles.Select(ur => ur.Role.Name).ToList() })
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NotFoundAppException("User not found.");
+
         existing.RevokedAtUtc = DateTime.UtcNow;
 
-        var pair = await IssueTokenPairAsync(existing.User.Id, existing.User.Email, existing.User.UserRoles.Select(ur => ur.Role.Name).ToList(), ct, saveChanges: false);
+        var pair = await IssueTokenPairAsync(existing.UserId, user.Email, user.Roles, ct, saveChanges: false);
 
         existing.ReplacedByTokenHash = tokenService.HashToken(pair.RefreshToken);
         await db.SaveChangesAsync(ct);
@@ -59,14 +68,20 @@ public class AuthService(AppDbContext db, ITokenService tokenService, IPermissio
     public async Task<CurrentUserDto> GetCurrentUserAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await db.Users
-            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .FirstOrDefaultAsync(u => u.Id == userId, ct)
+            .Where(u => u.Id == userId)
+            .Select(u => new CurrentUserDto
+            {
+                Id = u.Id,
+                Email = u.Email,
+                DisplayName = u.DisplayName,
+                Roles = u.UserRoles.Select(ur => ur.Role.Name).ToList(),
+            })
+            .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundAppException("User not found.");
 
-        var roleNames = user.UserRoles.Select(ur => ur.Role.Name).ToList();
-        var permissions = await permissionResolver.GetEffectivePermissionsAsync(roleNames, ct);
+        var permissions = await permissionResolver.GetEffectivePermissionsAsync(user.Roles, ct);
 
-        return new CurrentUserDto(user.Id, user.Email, user.DisplayName, roleNames, permissions.OrderBy(p => p, StringComparer.Ordinal).ToList());
+        return user with { Permissions = permissions.OrderBy(p => p, StringComparer.Ordinal).ToList() };
     }
 
     private async Task<TokenPairDto> IssueTokenPairAsync(Guid userId, string email, IReadOnlyList<string> roles, CancellationToken ct, bool saveChanges = true)

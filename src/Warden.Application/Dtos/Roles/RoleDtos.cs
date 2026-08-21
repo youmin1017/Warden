@@ -1,11 +1,24 @@
+using Facet;
+using Warden.Domain.Entities;
+
 namespace Warden.Application.Dtos.Roles;
 
-public record RoleDto(Guid Id, string Name, string? Description, bool IsSystemRole, int UserCount);
+[Facet(typeof(AppRole), exclude: [nameof(AppRole.NormalizedName), nameof(AppRole.CreatedAtUtc), nameof(AppRole.UserRoles), nameof(AppRole.RolePermissions)])]
+public partial record RoleDto
+{
+    public int UserCount { get; set; }
+}
 
-public record RoleDetailDto(Guid Id, string Name, string? Description, bool IsSystemRole, IReadOnlyList<string> Permissions);
+[Facet(typeof(AppRole), exclude: [nameof(AppRole.NormalizedName), nameof(AppRole.CreatedAtUtc), nameof(AppRole.UserRoles), nameof(AppRole.RolePermissions)])]
+public partial record RoleDetailDto
+{
+    public IReadOnlyList<string> Permissions { get; set; } = [];
+}
 
-public record CreateRoleRequest(string Name, string? Description);
+[Facet(typeof(AppRole), Include = [nameof(AppRole.Name), nameof(AppRole.Description)])]
+public partial record CreateRoleRequest;
 
-public record UpdateRoleRequest(string Name, string? Description);
+[Facet(typeof(AppRole), Include = [nameof(AppRole.Name), nameof(AppRole.Description)])]
+public partial record UpdateRoleRequest;
 
 public record UpdateRolePermissionsRequest(IReadOnlyList<string> Permissions);

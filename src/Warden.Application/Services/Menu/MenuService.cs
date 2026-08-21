@@ -10,13 +10,13 @@ public class MenuService(AppDbContext db, IPermissionResolver permissionResolver
 {
     public async Task<IReadOnlyList<MenuItemDto>> GetTreeAsync(CancellationToken ct = default)
     {
-        var items = await db.MenuItems.OrderBy(m => m.SortOrder).ToListAsync(ct);
+        var items = await db.MenuItems.AsNoTracking().OrderBy(m => m.SortOrder).ToListAsync(ct);
         return BuildTree(items, null);
     }
 
     public async Task<IReadOnlyList<MenuItemDto>> GetTreeForRolesAsync(IReadOnlyList<string> roleNames, CancellationToken ct = default)
     {
-        var items = await db.MenuItems.Where(m => m.IsActive).OrderBy(m => m.SortOrder).ToListAsync(ct);
+        var items = await db.MenuItems.AsNoTracking().Where(m => m.IsActive).OrderBy(m => m.SortOrder).ToListAsync(ct);
         var effectivePermissions = await permissionResolver.GetEffectivePermissionsAsync(roleNames, ct);
 
         var tree = BuildTree(items, null);
@@ -79,12 +79,11 @@ public class MenuService(AppDbContext db, IPermissionResolver permissionResolver
     {
         return items
             .Where(m => m.ParentId == parentId)
-            .Select(m => new MenuItemDto(m.Id, m.ParentId, m.Label, m.Path, m.Icon, m.RequiredPermission, m.SortOrder, m.IsActive, BuildTree(items, m.Id)))
+            .Select(m => new MenuItemDto(m) { Children = BuildTree(items, m.Id) })
             .ToList();
     }
 
-    private static MenuItemDto ToLeafDto(Domain.Entities.MenuItem m) =>
-        new(m.Id, m.ParentId, m.Label, m.Path, m.Icon, m.RequiredPermission, m.SortOrder, m.IsActive, []);
+    private static MenuItemDto ToLeafDto(Domain.Entities.MenuItem m) => new(m);
 
     /// <summary>Keeps a node if the caller has its permission (or it has none), or if any child survives pruning.</summary>
     private static MenuItemDto? Prune(MenuItemDto node, IReadOnlySet<string> effectivePermissions)

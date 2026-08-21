@@ -1,21 +1,13 @@
+using Facet;
+using Warden.Domain.Entities;
+
 namespace Warden.Application.Dtos.Menu;
 
-public record MenuItemDto(
-    Guid Id,
-    Guid? ParentId,
-    string Label,
-    string? Path,
-    string? Icon,
-    string? RequiredPermission,
-    int SortOrder,
-    bool IsActive,
-    IReadOnlyList<MenuItemDto> Children);
+[Facet(typeof(MenuItem))]
+public partial record MenuItemDto
+{
+    public IReadOnlyList<MenuItemDto> Children { get; set; } = [];
+}
 
-public record UpsertMenuItemRequest(
-    Guid? ParentId,
-    string Label,
-    string? Path,
-    string? Icon,
-    string? RequiredPermission,
-    int SortOrder,
-    bool IsActive);
+[Facet(typeof(MenuItem), exclude: [nameof(MenuItem.Id)])]
+public partial record UpsertMenuItemRequest;

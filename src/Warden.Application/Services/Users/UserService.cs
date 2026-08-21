@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Warden.Application.Common;
 using Warden.Application.Dtos.Users;
@@ -8,20 +9,34 @@ namespace Warden.Application.Services.Users;
 
 public class UserService(AppDbContext db) : IUserService
 {
+    // Explicit member-init (not `new UserDto(u)`) so EF only selects these columns — a
+    // constructor that copies from the whole AppUser would force it to also fetch and
+    // materialize PasswordHash/NormalizedEmail just to build (and immediately discard) the entity.
+    private static readonly Expression<Func<AppUser, UserDto>> ProjectToDto = u => new UserDto
+    {
+        Id = u.Id,
+        Email = u.Email,
+        DisplayName = u.DisplayName,
+        IsActive = u.IsActive,
+        CreatedAtUtc = u.CreatedAtUtc,
+        Roles = u.UserRoles.Select(ur => ur.Role.Name).ToList(),
+    };
+
     public async Task<IReadOnlyList<UserDto>> GetAllAsync(CancellationToken ct = default)
     {
-        var users = await db.Users
-            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+        return await db.Users
             .OrderBy(u => u.Email)
+            .Select(ProjectToDto)
             .ToListAsync(ct);
-
-        return users.Select(u => ToDto(u)).ToList();
     }
 
     public async Task<UserDto> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var user = await FindAsync(id, ct);
-        return ToDto(user);
+        return await db.Users
+            .Where(u => u.Id == id)
+            .Select(ProjectToDto)
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NotFoundAppException($"User '{id}' was not found.");
     }
 
     public async Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken ct = default)
@@ -110,6 +125,6 @@ public class UserService(AppDbContext db) : IUserService
     private static UserDto ToDto(AppUser user, IReadOnlyList<string>? roleNamesOverride = null)
     {
         var roleNames = roleNamesOverride ?? user.UserRoles.Select(ur => ur.Role.Name).ToList();
-        return new UserDto(user.Id, user.Email, user.DisplayName, user.IsActive, roleNames, user.CreatedAtUtc);
+        return new UserDto(user) { Roles = roleNames };
     }
 }

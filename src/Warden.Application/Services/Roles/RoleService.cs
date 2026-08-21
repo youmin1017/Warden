@@ -11,12 +11,17 @@ public class RoleService(AppDbContext db, IPermissionResolver permissionResolver
 {
     public async Task<IReadOnlyList<RoleDto>> GetAllAsync(CancellationToken ct = default)
     {
-        var roles = await db.Roles
-            .Include(r => r.UserRoles)
+        return await db.Roles
             .OrderBy(r => r.Name)
+            .Select(r => new RoleDto
+            {
+                Id = r.Id,
+                Name = r.Name,
+                Description = r.Description,
+                IsSystemRole = r.IsSystemRole,
+                UserCount = r.UserRoles.Count,
+            })
             .ToListAsync(ct);
-
-        return roles.Select(r => new RoleDto(r.Id, r.Name, r.Description, r.IsSystemRole, r.UserRoles.Count)).ToList();
     }
 
     public async Task<RoleDetailDto> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -92,12 +97,10 @@ public class RoleService(AppDbContext db, IPermissionResolver permissionResolver
         await db.SaveChangesAsync(ct);
         permissionResolver.InvalidateRole(role.NormalizedName);
 
-        return new RoleDetailDto(
-            role.Id,
-            role.Name,
-            role.Description,
-            role.IsSystemRole,
-            newPermissions.Select(p => p.PermissionKey).OrderBy(k => k, StringComparer.Ordinal).ToList());
+        return new RoleDetailDto(role)
+        {
+            Permissions = newPermissions.Select(p => p.PermissionKey).OrderBy(k => k, StringComparer.Ordinal).ToList(),
+        };
     }
 
     private async Task<AppRole> FindAsync(Guid id, CancellationToken ct)
@@ -108,10 +111,8 @@ public class RoleService(AppDbContext db, IPermissionResolver permissionResolver
             ?? throw new NotFoundAppException($"Role '{id}' was not found.");
     }
 
-    private static RoleDetailDto ToDetailDto(AppRole role) => new(
-        role.Id,
-        role.Name,
-        role.Description,
-        role.IsSystemRole,
-        role.RolePermissions.Select(rp => rp.PermissionKey).OrderBy(k => k, StringComparer.Ordinal).ToList());
+    private static RoleDetailDto ToDetailDto(AppRole role) => new(role)
+    {
+        Permissions = role.RolePermissions.Select(rp => rp.PermissionKey).OrderBy(k => k, StringComparer.Ordinal).ToList(),
+    };
 }
