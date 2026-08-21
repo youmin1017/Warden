@@ -20,4 +20,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (auth.isAuthenticated && isLoginPage) {
     return navigateTo('/admin')
   }
+
+  const requiredPermission = to.meta.permission
+  if (requiredPermission && !auth.hasPermission(requiredPermission)) {
+    return navigateTo('/403')
+  }
 })

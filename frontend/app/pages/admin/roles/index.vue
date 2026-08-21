@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PermissionModuleGroup, RoleDetailDto, RoleDto } from '~/types/api'
 
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: 'admin', permission: 'role.read' })
 
 const { request } = useApi()
 const toast = useToast()

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MenuItemDto, PermissionModuleGroup } from '~/types/api'
 
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: 'admin', permission: 'menu.read' })
 
 const { request } = useApi()
 const toast = useToast()

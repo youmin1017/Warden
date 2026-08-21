@@ -3,7 +3,7 @@ import { h, resolveComponent } from 'vue'
 import type { TableColumn } from '@nuxt/ui'
 import type { RoleDto, UserDto } from '~/types/api'
 
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: 'admin', permission: 'user.read' })
 
 const { request } = useApi()
 const toast = useToast()
