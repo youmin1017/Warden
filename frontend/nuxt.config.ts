@@ -1,16 +1,10 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  modules: [
-    '@nuxt/eslint',
-    '@nuxt/icon',
-    '@nuxt/ui',
-    '@pinia/nuxt'
-  ],
+  modules: ['@nuxt/eslint', '@nuxt/icon', '@nuxt/ui', '@pinia/nuxt'],
 
   devtools: {
     enabled: true
   },
-
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
@@ -27,6 +21,12 @@ export default defineNuxtConfig({
         commaDangle: 'never',
         braceStyle: '1tbs'
       }
+    }
+  },
+
+  icon: {
+    clientBundle: {
+      scan: true
     }
   }
 })
