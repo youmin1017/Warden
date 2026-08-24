@@ -29,14 +29,4 @@ public static class PermissionConstants
         public const string Delete = "role.delete";
         public const string ManagePermissions = "role.manage-permissions";
     }
-
-    public static class Menu
-    {
-        public const string Module = "menu";
-        public const string All = "menu.*";
-        public const string Read = "menu.read";
-        public const string Create = "menu.create";
-        public const string Update = "menu.update";
-        public const string Delete = "menu.delete";
-    }
 }

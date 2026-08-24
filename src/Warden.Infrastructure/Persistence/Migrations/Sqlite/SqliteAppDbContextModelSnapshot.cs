@@ -89,44 +89,6 @@ namespace Warden.Infrastructure.Persistence.Migrations.Sqlite
                     b.ToTable("Users", (string)null);
                 });
 
-            modelBuilder.Entity("Warden.Domain.Entities.MenuItem", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Icon")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Label")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("ParentId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Path")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RequiredPermission")
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ParentId");
-
-                    b.ToTable("MenuItems", (string)null);
-                });
-
             modelBuilder.Entity("Warden.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -198,14 +160,6 @@ namespace Warden.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasIndex("RoleId");
 
                     b.ToTable("UserRoles", (string)null);
-                });
-
-            modelBuilder.Entity("Warden.Domain.Entities.MenuItem", b =>
-                {
-                    b.HasOne("Warden.Domain.Entities.MenuItem", null)
-                        .WithMany()
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Warden.Domain.Entities.RefreshToken", b =>

@@ -23,18 +23,6 @@ export interface RoleDetailDto {
   permissions: string[]
 }
 
-export interface MenuItemDto {
-  id: string
-  parentId: string | null
-  label: string
-  path: string | null
-  icon: string | null
-  requiredPermission: string | null
-  sortOrder: number
-  isActive: boolean
-  children: MenuItemDto[]
-}
-
 export interface PermissionDescriptor {
   key: string
   module: string

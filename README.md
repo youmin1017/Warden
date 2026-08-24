@@ -2,7 +2,7 @@
 
 A template for a .NET 10 + Nuxt 4 admin application with RBAC (roles + granular permissions,
 including wildcards like `user.*` and `*`), a JWT auth flow, and an Orchard-like admin UI that
-lets you manage users, roles/permissions, and the navigation menu at runtime.
+lets you manage users and roles/permissions at runtime.
 
 ## Stack
 
@@ -67,7 +67,6 @@ On first run this applies EF Core migrations and seeds:
 - A `SuperAdmin` role with the `*` wildcard permission
 - An admin user (`admin@warden.local` / `ChangeMe123!` by default — override via the
   `SeedAdmin` section in `appsettings.json` or `SeedAdmin__*` env vars before first run)
-- A starter navigation menu (Dashboard, Users, Roles, Menu)
 
 The API listens on `http://localhost:5083` and serves Scalar UI at `/scalar` in Development.
 

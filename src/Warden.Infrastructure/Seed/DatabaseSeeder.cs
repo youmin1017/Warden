@@ -7,8 +7,7 @@ using Warden.Infrastructure.Persistence;
 namespace Warden.Infrastructure.Seed;
 
 /// <summary>
-/// Idempotent startup seed: a SuperAdmin role (wildcard "*"), one seeded admin user, and a
-/// starter menu tree so the admin UI has something to render on first run.
+/// Idempotent startup seed: a SuperAdmin role (wildcard "*") and one seeded admin user.
 /// </summary>
 public class DatabaseSeeder(AppDbContext db, IOptions<SeedOptions> seedOptions)
 {
@@ -18,7 +17,6 @@ public class DatabaseSeeder(AppDbContext db, IOptions<SeedOptions> seedOptions)
     {
         var superAdminRole = await SeedSuperAdminRoleAsync(ct);
         await SeedAdminUserAsync(superAdminRole, ct);
-        await SeedMenuAsync(ct);
     }
 
     private async Task<AppRole> SeedSuperAdminRoleAsync(CancellationToken ct)
@@ -61,22 +59,6 @@ public class DatabaseSeeder(AppDbContext db, IOptions<SeedOptions> seedOptions)
         user.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = superAdminRole.Id });
 
         db.Users.Add(user);
-        await db.SaveChangesAsync(ct);
-    }
-
-    private async Task SeedMenuAsync(CancellationToken ct)
-    {
-        if (await db.MenuItems.AnyAsync(ct))
-        {
-            return;
-        }
-
-        db.MenuItems.AddRange(
-            new MenuItem { Label = "Dashboard", Path = "/admin", Icon = "i-lucide-layout-dashboard", SortOrder = 0 },
-            new MenuItem { Label = "Users", Path = "/admin/users", Icon = "i-lucide-users", RequiredPermission = PermissionConstants.Users.Read, SortOrder = 10 },
-            new MenuItem { Label = "Roles", Path = "/admin/roles", Icon = "i-lucide-shield", RequiredPermission = PermissionConstants.Roles.Read, SortOrder = 20 },
-            new MenuItem { Label = "Menu", Path = "/admin/menu", Icon = "i-lucide-menu", RequiredPermission = PermissionConstants.Menu.Read, SortOrder = 30 });
-
         await db.SaveChangesAsync(ct);
     }
 }
