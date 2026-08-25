@@ -11,5 +11,17 @@ services:
     volumes:
       - warden_postgres_data:/var/lib/postgresql/data
 
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: warden
+      MARIADB_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - warden_mariadb_data:/var/lib/mysql
+
 volumes:
   warden_postgres_data:
+  warden_mariadb_data:

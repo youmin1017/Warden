@@ -8,7 +8,7 @@ lets you manage users and roles/permissions at runtime.
 
 - **Backend**: ASP.NET Core 10 Web API in an MVCS shape (Model / Controller / Service — no
   Repository layer, Services use EF Core's `DbContext` directly), EF Core 10 with swappable
-  SQLite / PostgreSQL providers, JWT bearer auth (access + refresh token).
+  SQLite / PostgreSQL / MariaDB providers, JWT bearer auth (access + refresh token).
 - **Frontend**: Nuxt 4 + `@nuxt/ui` v4 + Pinia.
 
 ## Project layout
@@ -53,7 +53,7 @@ To remove it, `dotnet new uninstall .` (run from this repo's root).
 
 - .NET 10 SDK
 - Node.js + [pnpm](https://pnpm.io)
-- Optionally Docker, if you want to run PostgreSQL via `docker-compose.yml` instead of SQLite
+- Optionally Docker, if you want to run PostgreSQL or MariaDB via `docker-compose.yml` instead of SQLite
 
 ## Running the backend
 
@@ -72,11 +72,13 @@ The API listens on `http://localhost:5083` and serves Scalar UI at `/scalar` in 
 
 ### Switching database provider
 
-Set `Database:Provider` in `appsettings.json` (or `Database__Provider` env var) to `Sqlite` or
-`Postgres`, and update `ConnectionStrings:Default` to match. To run Postgres locally:
+Set `Database:Provider` in `appsettings.json` (or `Database__Provider` env var) to `Sqlite`,
+`Postgres`, or `MariaDb`, and update `ConnectionStrings:Default` to match. To run Postgres or
+MariaDB locally:
 
 ```
 docker compose up -d postgres
+docker compose up -d mariadb
 ```
 
 then set:
@@ -86,20 +88,25 @@ then set:
 "ConnectionStrings": { "Default": "Host=localhost;Port=5432;Database=warden;Username=postgres;Password=postgres" }
 ```
 
+```json
+"Database": { "Provider": "MariaDb" },
+"ConnectionStrings": { "Default": "Server=localhost;Port=3306;Database=warden;User=root;Password=root;" }
+```
+
 ### Migrations
 
 Each provider owns its own migrations folder (`Persistence/Migrations/Sqlite`,
-`Persistence/Migrations/Postgres`) because migrations are provider-specific SQL. To add a new
-migration after changing an entity, run it once per provider:
+`Persistence/Migrations/Postgres`, `Persistence/Migrations/MariaDb`) because migrations are
+provider-specific SQL. To add a new migration after changing an entity, run it once per provider:
 
 ```
 dotnet ef migrations add YourMigrationName --context SqliteAppDbContext -o Persistence/Migrations/Sqlite --project src/Warden.Infrastructure
 dotnet ef migrations add YourMigrationName --context PostgresAppDbContext -o Persistence/Migrations/Postgres --project src/Warden.Infrastructure
+dotnet ef migrations add YourMigrationName --context MariaDbAppDbContext -o Persistence/Migrations/MariaDb --project src/Warden.Infrastructure
 ```
 
-Adding a third provider (e.g. MariaDB, once its EF Core provider catches up to EF Core 10) means
-adding one more thin `AppDbContext` subclass + design-time factory + migrations folder — the
-shared model lives entirely in the abstract `AppDbContext` base class.
+Adding another provider means adding one more thin `AppDbContext` subclass + design-time factory +
+migrations folder — the shared model lives entirely in the abstract `AppDbContext` base class.
 
 ## Adding a new permission
 

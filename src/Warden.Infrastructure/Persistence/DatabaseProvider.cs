@@ -4,4 +4,5 @@ public enum DatabaseProvider
 {
     Sqlite,
     Postgres,
+    MariaDb,
 }

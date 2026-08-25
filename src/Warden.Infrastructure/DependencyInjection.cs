@@ -31,6 +31,10 @@ public static class DependencyInjection
             case DatabaseProvider.Postgres:
                 services.AddDbContext<AppDbContext, PostgresAppDbContext>(options => options.UseNpgsql(connectionString));
                 break;
+            case DatabaseProvider.MariaDb:
+                services.AddDbContext<AppDbContext, MariaDbAppDbContext>(options =>
+                    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+                break;
             default:
                 throw new InvalidOperationException($"Unhandled provider '{provider}'.");
         }
