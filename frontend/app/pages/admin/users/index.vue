@@ -23,7 +23,6 @@ const editingUser = ref<UserDto | null>(null)
 const form = reactive({
   email: '',
   displayName: '',
-  password: '',
   isActive: true,
   roleNames: [] as string[]
 })
@@ -32,7 +31,6 @@ function openCreate() {
   editingUser.value = null
   form.email = ''
   form.displayName = ''
-  form.password = ''
   form.isActive = true
   form.roleNames = []
   isModalOpen.value = true
@@ -42,7 +40,6 @@ function openEdit(user: UserDto) {
   editingUser.value = user
   form.email = user.email
   form.displayName = user.displayName
-  form.password = ''
   form.isActive = user.isActive
   form.roleNames = [...user.roles]
   isModalOpen.value = true
@@ -58,7 +55,7 @@ async function submit() {
     } else {
       await request('/api/admin/users', {
         method: 'POST',
-        body: { email: form.email, displayName: form.displayName, password: form.password, roleNames: form.roleNames }
+        body: { email: form.email, displayName: form.displayName, roleNames: form.roleNames }
       })
     }
     isModalOpen.value = false
@@ -125,10 +122,6 @@ const columns: TableColumn<UserDto>[] = [
 
           <UFormField label="Display name">
             <UInput v-model="form.displayName" class="w-full" />
-          </UFormField>
-
-          <UFormField v-if="!editingUser" label="Password">
-            <UInput v-model="form.password" type="password" class="w-full" />
           </UFormField>
 
           <UFormField label="Roles">

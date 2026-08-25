@@ -50,3 +50,8 @@ export interface TokenPairDto {
   refreshToken: string
   refreshTokenExpiresAtUtc: string
 }
+
+export interface OidcProviderDto {
+  name: string
+  displayName: string
+}

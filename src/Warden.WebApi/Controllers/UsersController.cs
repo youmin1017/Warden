@@ -43,11 +43,4 @@ public class UsersController(IUserService userService) : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("{id:guid}/change-password")]
-    [RequirePermission(PermissionConstants.Users.Update)]
-    public async Task<IActionResult> ChangePassword(Guid id, ChangePasswordRequest request, CancellationToken ct)
-    {
-        await userService.ChangePasswordAsync(id, request, ct);
-        return NoContent();
-    }
 }

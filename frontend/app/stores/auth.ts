@@ -66,11 +66,12 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  async function login(email: string, password: string) {
-    const pair = await $fetch<TokenPairDto>('/api/auth/login', {
+  /** Exchanges the one-time code from the OIDC callback redirect for a token pair. */
+  async function completeOidcLogin(code: string) {
+    const pair = await $fetch<TokenPairDto>('/api/auth/oidc/exchange', {
       baseURL: apiBase,
       method: 'POST',
-      body: { email, password }
+      body: { code }
     })
     setTokens(pair)
     await fetchCurrentUser()
@@ -147,7 +148,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isAuthenticated,
     hasPermission,
-    login,
+    completeOidcLogin,
     logout,
     refresh,
     restoreSession

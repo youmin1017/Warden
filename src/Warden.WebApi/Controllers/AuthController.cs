@@ -1,6 +1,9 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Warden.Application.Dtos.Auth;
+using Warden.Application.Options;
 using Warden.Application.Services.Auth;
 using Warden.WebApi.Common;
 
@@ -8,12 +11,32 @@ namespace Warden.WebApi.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController(IAuthService authService) : ControllerBase
+public class AuthController(IAuthService authService, IOidcHandoffCodeStore handoffCodeStore, IOptions<OidcOptions> oidcOptions) : ControllerBase
 {
-    [HttpPost("login")]
+    [HttpGet("oidc/providers")]
     [AllowAnonymous]
-    public async Task<ActionResult<TokenPairDto>> Login(LoginRequest request, CancellationToken ct)
-        => Ok(await authService.LoginAsync(request, ct));
+    public ActionResult<IReadOnlyList<OidcProviderDto>> GetOidcProviders()
+        => Ok(oidcOptions.Value.Providers.Select(p => new OidcProviderDto(p.Name, p.DisplayName)).ToList());
+
+    [HttpGet("oidc/{provider}/challenge")]
+    [AllowAnonymous]
+    public IActionResult Challenge(string provider)
+    {
+        if (!oidcOptions.Value.Providers.Any(p => p.Name == provider))
+        {
+            return NotFound();
+        }
+
+        return base.Challenge(new AuthenticationProperties(), provider);
+    }
+
+    [HttpPost("oidc/exchange")]
+    [AllowAnonymous]
+    public async Task<ActionResult<TokenPairDto>> ExchangeOidcCode(OidcExchangeRequest request, CancellationToken ct)
+    {
+        var pair = await handoffCodeStore.ConsumeAsync(request.Code, ct);
+        return pair is null ? Unauthorized() : Ok(pair);
+    }
 
     [HttpPost("refresh")]
     [AllowAnonymous]

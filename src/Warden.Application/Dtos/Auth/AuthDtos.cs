@@ -3,9 +3,11 @@ using Warden.Domain.Entities;
 
 namespace Warden.Application.Dtos.Auth;
 
-public record LoginRequest(string Email, string Password);
-
 public record RefreshRequest(string RefreshToken);
+
+public record OidcExchangeRequest(string Code);
+
+public record OidcProviderDto(string Name, string DisplayName);
 
 public record TokenPairDto(string AccessToken, DateTime AccessTokenExpiresAtUtc, string RefreshToken, DateTime RefreshTokenExpiresAtUtc);
 

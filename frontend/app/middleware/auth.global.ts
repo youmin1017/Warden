@@ -7,17 +7,19 @@ export default defineNuxtRouteMiddleware(async (to) => {
     await auth.restoreSession()
   }
 
-  const isLoginPage = to.path === '/login'
+  // /auth/callback must be reachable while unauthenticated — it's where the OIDC handoff
+  // code gets exchanged for a session in the first place.
+  const isPublicAuthPage = to.path === '/login' || to.path === '/auth/callback'
 
   if (to.path === '/') {
     return navigateTo(auth.isAuthenticated ? '/admin' : '/login')
   }
 
-  if (!auth.isAuthenticated && !isLoginPage) {
+  if (!auth.isAuthenticated && !isPublicAuthPage) {
     return navigateTo('/login')
   }
 
-  if (auth.isAuthenticated && isLoginPage) {
+  if (auth.isAuthenticated && isPublicAuthPage) {
     return navigateTo('/admin')
   }
 

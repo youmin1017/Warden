@@ -1,21 +1,39 @@
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Warden.Application;
 using Warden.Application.Options;
+using Warden.Application.Services.Auth;
 using Warden.Infrastructure;
 using Warden.Infrastructure.Persistence;
 using Warden.Infrastructure.Seed;
 using Warden.WebApi.Middleware;
 using Scalar.AspNetCore;
+using DotNetEnv;
+
+// Dev convenience only, mirroring the frontend's auto-loaded .env — CI/production configure via
+// real environment variables or user-secrets, so a missing .env here must not stop the app.
+if (string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase))
+{
+    try
+    {
+        Env.TraversePath().Load();
+    }
+    catch (FileNotFoundException)
+    {
+    }
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
+builder.Services.Configure<OidcOptions>(builder.Configuration.GetSection(OidcOptions.SectionName));
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplicationServices();
@@ -27,7 +45,10 @@ builder.Services.AddAuthorization();
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
     ?? throw new InvalidOperationException("Missing Jwt configuration section.");
 
-builder.Services
+var oidcOptions = builder.Configuration.GetSection(OidcOptions.SectionName).Get<OidcOptions>()
+    ?? throw new InvalidOperationException("Missing Oidc configuration section.");
+
+var authBuilder = builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -38,7 +59,85 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
             ClockSkew = TimeSpan.FromSeconds(30),
         };
+    })
+    // Purely a transient correlation cookie for the OIDC handshake (state/nonce/PKCE) — not the
+    // app's session. The frontend never sees it and it's unrelated to `warden_refresh_token`.
+    .AddCookie("OidcCorrelation", options =>
+    {
+        options.Cookie.Name = ".Warden.OidcCorrelation";
+        options.Cookie.SameSite = SameSiteMode.None;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
     });
+
+foreach (var provider in oidcOptions.Providers)
+{
+    authBuilder.AddOpenIdConnect(provider.Name, provider.DisplayName, options =>
+    {
+        options.SignInScheme = "OidcCorrelation";
+        options.Authority = provider.Authority;
+        options.ClientId = provider.ClientId;
+        options.ClientSecret = provider.ClientSecret;
+        options.ResponseType = "code";
+        options.UsePkce = true;
+        options.SaveTokens = false;
+        options.CallbackPath = $"/api/auth/callback/{provider.Name}";
+
+        options.Scope.Clear();
+        foreach (var scope in provider.Scope.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            options.Scope.Add(scope);
+        }
+
+        // Warden mints its own JWT/refresh pair below and hands it to the SPA via a one-time
+        // handoff code — it never relies on the OIDC handler's own sign-in cookie, so every path
+        // here ends in HandleResponse() to stop that default post-auth behavior from also running.
+        options.Events.OnTicketReceived = async context =>
+        {
+            var principal = context.Principal!;
+            var subject = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal.FindFirstValue("sub");
+            var email = principal.FindFirstValue(ClaimTypes.Email) ?? principal.FindFirstValue("email");
+            var displayName = principal.FindFirstValue("name") ?? email ?? string.Empty;
+
+            var services = context.HttpContext.RequestServices;
+
+            if (string.IsNullOrEmpty(subject) || string.IsNullOrEmpty(email))
+            {
+                services.GetRequiredService<ILogger<Program>>()
+                    .LogWarning("OIDC provider {Provider} did not return a sub/email claim.", provider.Name);
+                context.Response.Redirect($"{oidcOptions.FrontendBaseUrl}/login?error=oidc_failed");
+                context.HandleResponse();
+                return;
+            }
+
+            try
+            {
+                var authService = services.GetRequiredService<IAuthService>();
+                var handoffStore = services.GetRequiredService<IOidcHandoffCodeStore>();
+
+                var pair = await authService.CompleteOidcLoginAsync(provider.Name, subject, email, displayName, context.HttpContext.RequestAborted);
+                var code = await handoffStore.CreateAsync(pair, context.HttpContext.RequestAborted);
+
+                context.Response.Redirect($"{oidcOptions.FrontendBaseUrl}/auth/callback?code={code}");
+            }
+            catch (Exception ex)
+            {
+                services.GetRequiredService<ILogger<Program>>()
+                    .LogWarning(ex, "OIDC login via {Provider} failed to complete.", provider.Name);
+                context.Response.Redirect($"{oidcOptions.FrontendBaseUrl}/login?error=oidc_failed");
+            }
+
+            context.HandleResponse();
+        };
+
+        options.Events.OnRemoteFailure = context =>
+        {
+            context.Response.Redirect($"{oidcOptions.FrontendBaseUrl}/login?error=oidc_failed");
+            context.HandleResponse();
+            return Task.CompletedTask;
+        };
+    });
+}
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
@@ -60,7 +159,7 @@ builder.Services.AddOpenApi(options =>
             Type = SecuritySchemeType.Http,
             Scheme = "bearer",
             BearerFormat = "JWT",
-            Description = "Paste a JWT access token from POST /api/auth/login (no 'Bearer ' prefix needed).",
+            Description = "Paste a JWT access token from POST /api/auth/oidc/exchange or /api/auth/refresh (no 'Bearer ' prefix needed).",
         };
 
         document.Security ??= [];

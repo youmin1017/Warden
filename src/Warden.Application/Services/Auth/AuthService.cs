@@ -8,20 +8,60 @@ namespace Warden.Application.Services.Auth;
 
 public class AuthService(AppDbContext db, ITokenService tokenService, IPermissionResolver permissionResolver) : IAuthService
 {
-    public async Task<TokenPairDto> LoginAsync(LoginRequest request, CancellationToken ct = default)
+    public async Task<TokenPairDto> CompleteOidcLoginAsync(string provider, string subject, string email, string displayNameHint, CancellationToken ct = default)
     {
-        var normalizedEmail = request.Email.Trim().ToUpperInvariant();
-        var user = await db.Users
-            .AsNoTracking()
+        var normalizedEmail = email.Trim().ToUpperInvariant();
+
+        var linked = await db.Users
+            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.AuthProvider == provider && u.ExternalSubject == subject, ct);
+
+        if (linked is not null)
+        {
+            if (!linked.IsActive)
+            {
+                throw new UnauthorizedAppException("Account is disabled.");
+            }
+
+            return await IssueTokenPairAsync(linked.Id, linked.Email, linked.UserRoles.Select(ur => ur.Role.Name).ToList(), ct);
+        }
+
+        var byEmail = await db.Users
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, ct);
 
-        if (user is null || !user.IsActive || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        if (byEmail is not null)
         {
-            throw new UnauthorizedAppException("Invalid email or password.");
+            // Already linked to a *different* provider — email match alone must not be enough to
+            // re-link, or a second, less-verified IdP could hijack an existing account just by
+            // claiming the same email address.
+            if (byEmail.AuthProvider is not null)
+            {
+                throw new ConflictAppException("This email is already linked to a different sign-in provider.");
+            }
+
+            if (!byEmail.IsActive)
+            {
+                throw new UnauthorizedAppException("Account is disabled.");
+            }
+
+            byEmail.AuthProvider = provider;
+            byEmail.ExternalSubject = subject;
+
+            return await IssueTokenPairAsync(byEmail.Id, byEmail.Email, byEmail.UserRoles.Select(ur => ur.Role.Name).ToList(), ct);
         }
 
-        return await IssueTokenPairAsync(user.Id, user.Email, user.UserRoles.Select(ur => ur.Role.Name).ToList(), ct);
+        var newUser = new Domain.Entities.AppUser
+        {
+            Email = email.Trim(),
+            NormalizedEmail = normalizedEmail,
+            DisplayName = string.IsNullOrWhiteSpace(displayNameHint) ? email.Trim() : displayNameHint,
+            AuthProvider = provider,
+            ExternalSubject = subject,
+        };
+        db.Users.Add(newUser);
+
+        return await IssueTokenPairAsync(newUser.Id, newUser.Email, [], ct);
     }
 
     public async Task<TokenPairDto> RefreshAsync(RefreshRequest request, CancellationToken ct = default)

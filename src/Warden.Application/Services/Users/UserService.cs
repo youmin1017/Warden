@@ -49,12 +49,13 @@ public class UserService(AppDbContext db) : IUserService
 
         var roles = await ResolveRolesAsync(request.RoleNames, ct);
 
+        // Unlinked placeholder — same shape as the seeded SuperAdmin. Gets bound to whichever
+        // OIDC provider the person first logs in with, matched by this email (AuthService.CompleteOidcLoginAsync).
         var user = new AppUser
         {
             Email = request.Email.Trim(),
             NormalizedEmail = normalizedEmail,
             DisplayName = request.DisplayName,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
         };
         user.UserRoles = roles.Select(r => new UserRole { UserId = user.Id, RoleId = r.Id }).ToList();
 
@@ -84,13 +85,6 @@ public class UserService(AppDbContext db) : IUserService
     {
         var user = await FindAsync(id, ct);
         db.Users.Remove(user);
-        await db.SaveChangesAsync(ct);
-    }
-
-    public async Task ChangePasswordAsync(Guid id, ChangePasswordRequest request, CancellationToken ct = default)
-    {
-        var user = await FindAsync(id, ct);
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         await db.SaveChangesAsync(ct);
     }
 
