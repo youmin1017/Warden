@@ -7,6 +7,7 @@ export default withNuxt(
     rules: {
       '@stylistic/arrow-parens': 'off',
       'vue/singleline-html-element-content-newline': 'off',
+      '@stylistic/member-delimiter-style': 'off',
       'vue/max-attributes-per-line': [
         'warn',
         {

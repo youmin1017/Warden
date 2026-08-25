@@ -1,6 +1,20 @@
 import { defineStore } from 'pinia'
 import type { CurrentUserDto, TokenPairDto } from '~/types/api'
 
+// Bridges the two independent SSR render passes Nuxt performs for a single request
+// whenever a middleware throws createError() (see error.vue/__nuxt_error): the second
+// pass gets a brand-new Nuxt app and Pinia store, but reads the same (now-consumed)
+// refresh token from the original request's cookie header. Without this, that second
+// pass would replay the already-rotated token, get rejected by the backend, and wipe
+// out the session the first pass had just successfully restored. Keyed by the token
+// that was exchanged, so it only ever short-circuits a genuine same-request replay.
+const recentRefreshResults = new Map<string, { pair: TokenPairDto, user: CurrentUserDto }>()
+
+function rememberRefresh(usedToken: string, pair: TokenPairDto, user: CurrentUserDto) {
+  recentRefreshResults.set(usedToken, { pair, user })
+  setTimeout(() => recentRefreshResults.delete(usedToken), 5000)
+}
+
 export const useAuthStore = defineStore('auth', () => {
   // Captured once, synchronously, at store setup — composables like useRuntimeConfig()
   // can silently lose Nuxt's request context if called from inside an action body after
@@ -16,10 +30,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!accessToken.value && !!user.value)
 
-  // Guards against a second, re-entrant refresh() call (e.g. Nuxt re-running global
-  // middleware for a 404 fallback render within the same SSR request) racing the first —
-  // refresh tokens are single-use/rotating, so a second call with the same token would be
-  // rejected by the backend and wrongly clear a session that was just successfully restored.
+  // Guards against concurrent refresh() calls racing each other *within this store
+  // instance* (e.g. two components triggering a restore at once) — refresh tokens are
+  // single-use/rotating, so a second concurrent call with the same token would be
+  // rejected by the backend. The cross-instance replay that happens across the two SSR
+  // render passes for a single request (see recentRefreshResults above) is a separate
+  // problem this guard can't catch, since that second pass is a whole new store.
   let inFlightRefresh: Promise<boolean> | null = null
 
   function setTokens(pair: TokenPairDto) {
@@ -64,15 +80,30 @@ export const useAuthStore = defineStore('auth', () => {
     if (!refreshToken.value) return false
     if (inFlightRefresh) return inFlightRefresh
 
+    const usedToken = refreshToken.value
+
+    if (import.meta.server) {
+      const cached = recentRefreshResults.get(usedToken)
+      if (cached) {
+        recentRefreshResults.delete(usedToken)
+        setTokens(cached.pair)
+        user.value = cached.user
+        return true
+      }
+    }
+
     inFlightRefresh = (async () => {
       try {
         const pair = await $fetch<TokenPairDto>('/api/auth/refresh', {
           baseURL: apiBase,
           method: 'POST',
-          body: { refreshToken: refreshToken.value }
+          body: { refreshToken: usedToken }
         })
         setTokens(pair)
         await fetchCurrentUser()
+        if (import.meta.server && user.value) {
+          rememberRefresh(usedToken, pair, user.value)
+        }
         return true
       } catch (error: unknown) {
         // Only a real rejection from the backend (refresh token invalid/expired/revoked) should

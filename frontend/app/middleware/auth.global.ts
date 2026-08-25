@@ -23,6 +23,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   const requiredPermission = to.meta.permission
   if (requiredPermission && !auth.hasPermission(requiredPermission)) {
-    return navigateTo('/403')
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 })
