@@ -16,6 +16,8 @@ public abstract class AppDbContext(DbContextOptions options) : DbContext(options
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<OidcHandoffCode> OidcHandoffCodes => Set<OidcHandoffCode>();
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+    public DbSet<ApiKeyScope> ApiKeyScopes => Set<ApiKeyScope>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

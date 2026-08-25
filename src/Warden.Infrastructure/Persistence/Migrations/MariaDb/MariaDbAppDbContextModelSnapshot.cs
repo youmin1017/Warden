@@ -22,6 +22,79 @@ namespace Warden.Infrastructure.Persistence.Migrations.MariaDb
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
+            modelBuilder.Entity("Warden.Domain.Entities.ApiKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DisplaySuffix")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("varchar(8)");
+
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("KeyId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<DateTime?>("LastUsedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("SecretHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KeyId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ApiKeys", (string)null);
+                });
+
+            modelBuilder.Entity("Warden.Domain.Entities.ApiKeyScope", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ApiKeyId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("PermissionKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApiKeyId", "PermissionKey")
+                        .IsUnique();
+
+                    b.ToTable("ApiKeyScopes", (string)null);
+                });
+
             modelBuilder.Entity("Warden.Domain.Entities.AppRole", b =>
                 {
                     b.Property<Guid>("Id")
@@ -193,6 +266,28 @@ namespace Warden.Infrastructure.Persistence.Migrations.MariaDb
                     b.ToTable("UserRoles", (string)null);
                 });
 
+            modelBuilder.Entity("Warden.Domain.Entities.ApiKey", b =>
+                {
+                    b.HasOne("Warden.Domain.Entities.AppUser", "User")
+                        .WithMany("ApiKeys")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Warden.Domain.Entities.ApiKeyScope", b =>
+                {
+                    b.HasOne("Warden.Domain.Entities.ApiKey", "ApiKey")
+                        .WithMany("Scopes")
+                        .HasForeignKey("ApiKeyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApiKey");
+                });
+
             modelBuilder.Entity("Warden.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("Warden.Domain.Entities.AppUser", "User")
@@ -234,6 +329,11 @@ namespace Warden.Infrastructure.Persistence.Migrations.MariaDb
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Warden.Domain.Entities.ApiKey", b =>
+                {
+                    b.Navigation("Scopes");
+                });
+
             modelBuilder.Entity("Warden.Domain.Entities.AppRole", b =>
                 {
                     b.Navigation("RolePermissions");
@@ -243,6 +343,8 @@ namespace Warden.Infrastructure.Persistence.Migrations.MariaDb
 
             modelBuilder.Entity("Warden.Domain.Entities.AppUser", b =>
                 {
+                    b.Navigation("ApiKeys");
+
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("UserRoles");

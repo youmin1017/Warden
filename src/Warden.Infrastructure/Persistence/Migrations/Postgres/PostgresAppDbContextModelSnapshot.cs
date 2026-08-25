@@ -22,6 +22,79 @@ namespace Warden.Infrastructure.Persistence.Migrations.Postgres
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Warden.Domain.Entities.ApiKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplaySuffix")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("KeyId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime?>("LastUsedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SecretHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KeyId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ApiKeys", (string)null);
+                });
+
+            modelBuilder.Entity("Warden.Domain.Entities.ApiKeyScope", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ApiKeyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PermissionKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApiKeyId", "PermissionKey")
+                        .IsUnique();
+
+                    b.ToTable("ApiKeyScopes", (string)null);
+                });
+
             modelBuilder.Entity("Warden.Domain.Entities.AppRole", b =>
                 {
                     b.Property<Guid>("Id")
@@ -193,6 +266,28 @@ namespace Warden.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("UserRoles", (string)null);
                 });
 
+            modelBuilder.Entity("Warden.Domain.Entities.ApiKey", b =>
+                {
+                    b.HasOne("Warden.Domain.Entities.AppUser", "User")
+                        .WithMany("ApiKeys")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Warden.Domain.Entities.ApiKeyScope", b =>
+                {
+                    b.HasOne("Warden.Domain.Entities.ApiKey", "ApiKey")
+                        .WithMany("Scopes")
+                        .HasForeignKey("ApiKeyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApiKey");
+                });
+
             modelBuilder.Entity("Warden.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("Warden.Domain.Entities.AppUser", "User")
@@ -234,6 +329,11 @@ namespace Warden.Infrastructure.Persistence.Migrations.Postgres
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Warden.Domain.Entities.ApiKey", b =>
+                {
+                    b.Navigation("Scopes");
+                });
+
             modelBuilder.Entity("Warden.Domain.Entities.AppRole", b =>
                 {
                     b.Navigation("RolePermissions");
@@ -243,6 +343,8 @@ namespace Warden.Infrastructure.Persistence.Migrations.Postgres
 
             modelBuilder.Entity("Warden.Domain.Entities.AppUser", b =>
                 {
+                    b.Navigation("ApiKeys");
+
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("UserRoles");

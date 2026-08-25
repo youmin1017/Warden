@@ -55,3 +55,20 @@ export interface OidcProviderDto {
   name: string
   displayName: string
 }
+
+export interface ApiKeyDto {
+  id: string
+  name: string
+  keyId: string
+  displaySuffix: string
+  createdAtUtc: string
+  expiresAtUtc: string | null
+  revokedAtUtc: string | null
+  lastUsedAtUtc: string | null
+  scopes: string[]
+}
+
+export interface ApiKeyCreatedDto {
+  apiKey: ApiKeyDto
+  rawKey: string
+}

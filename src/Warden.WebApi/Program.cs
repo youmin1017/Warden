@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
@@ -8,10 +9,12 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Warden.Application;
 using Warden.Application.Options;
+using Warden.Application.Services.ApiKeys;
 using Warden.Application.Services.Auth;
 using Warden.Infrastructure;
 using Warden.Infrastructure.Persistence;
 using Warden.Infrastructure.Seed;
+using Warden.WebApi.Authentication;
 using Warden.WebApi.Middleware;
 using Scalar.AspNetCore;
 using DotNetEnv;
@@ -48,9 +51,23 @@ var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<Jw
 var oidcOptions = builder.Configuration.GetSection(OidcOptions.SectionName).Get<OidcOptions>()
     ?? throw new InvalidOperationException("Missing Oidc configuration section.");
 
+// "Bearer" is a policy scheme, not a real handler: it forwards to "Jwt" or "ApiKey" by sniffing
+// the token shape, so [Authorize] call sites (and the OpenAPI "Bearer" doc scheme) don't need to
+// know or care which one actually authenticated the request.
 var authBuilder = builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    .AddAuthentication("Bearer")
+    .AddPolicyScheme("Bearer", "JWT or API Key", options =>
+    {
+        options.ForwardDefaultSelector = context =>
+        {
+            var header = context.Request.Headers.Authorization.ToString();
+            var token = header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header["Bearer ".Length..] : header;
+            return token.StartsWith(ApiKeyFormat.Prefix, StringComparison.Ordinal)
+                ? ApiKeyAuthenticationDefaults.AuthenticationScheme
+                : "Jwt";
+        };
+    })
+    .AddJwtBearer("Jwt", options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -60,6 +77,7 @@ var authBuilder = builder.Services
             ClockSkew = TimeSpan.FromSeconds(30),
         };
     })
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationDefaults.AuthenticationScheme, _ => { })
     // Purely a transient correlation cookie for the OIDC handshake (state/nonce/PKCE) — not the
     // app's session. The frontend never sees it and it's unrelated to `warden_refresh_token`.
     .AddCookie("OidcCorrelation", options =>

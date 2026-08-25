@@ -29,4 +29,15 @@ public static class PermissionConstants
         public const string Delete = "role.delete";
         public const string ManagePermissions = "role.manage-permissions";
     }
+
+    /// <summary>Every user manages only their own API keys — these permission keys gate whether
+    /// the feature is available at all, not access to other users' keys.</summary>
+    public static class ApiKeys
+    {
+        public const string Module = "apikey";
+        public const string All = "apikey.*";
+        public const string Read = "apikey.read";
+        public const string Create = "apikey.create";
+        public const string Revoke = "apikey.revoke";
+    }
 }

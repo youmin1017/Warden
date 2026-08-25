@@ -16,4 +16,5 @@ public class AppUser
 
     public List<UserRole> UserRoles { get; set; } = [];
     public List<RefreshToken> RefreshTokens { get; set; } = [];
+    public List<ApiKey> ApiKeys { get; set; } = [];
 }

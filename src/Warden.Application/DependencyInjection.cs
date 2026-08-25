@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Warden.Application.Permissions;
+using Warden.Application.Services.ApiKeys;
 using Warden.Application.Services.Auth;
 using Warden.Application.Services.Permissions;
 using Warden.Application.Services.Roles;
@@ -21,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IPermissionCatalogService, PermissionCatalogService>();
         services.AddScoped<IPermissionResolver, PermissionResolver>();
+        services.AddScoped<IApiKeyService, ApiKeyService>();
 
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();

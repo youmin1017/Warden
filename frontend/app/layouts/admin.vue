@@ -13,7 +13,8 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/admin', icon: 'i-lucide-layout-dashboard' },
   { label: 'Users', path: '/admin/users', icon: 'i-lucide-users', permission: 'user.read' },
-  { label: 'Roles', path: '/admin/roles', icon: 'i-lucide-shield', permission: 'role.read' }
+  { label: 'Roles', path: '/admin/roles', icon: 'i-lucide-shield', permission: 'role.read' },
+  { label: 'API Keys', path: '/admin/api-keys', icon: 'i-lucide-key', permission: 'apikey.read' }
 ] as const
 
 const menu = computed(() => NAV_ITEMS.filter((item) => !item.permission || auth.hasPermission(item.permission)))
