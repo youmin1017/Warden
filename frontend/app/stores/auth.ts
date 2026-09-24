@@ -23,8 +23,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   const accessToken = ref<string | null>(null)
   const user = ref<CurrentUserDto | null>(null)
+  // Lax, not Strict: the OIDC login ends in a redirect chain that starts on the IdP's
+  // (cross-site) origin, and browsers withhold Strict cookies for that whole chain — so the
+  // SSR request for /admin arrived without the cookie, rendered /login, and the client then
+  // "hydrated" it as /admin, leaving the default layout's DOM under the admin layout.
   const refreshToken = useCookie<string | null>('warden_refresh_token', {
-    sameSite: 'strict',
+    sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 14
   })
 
