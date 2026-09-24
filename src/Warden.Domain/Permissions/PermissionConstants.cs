@@ -39,5 +39,6 @@ public static class PermissionConstants
         public const string Read = "apikey.read";
         public const string Create = "apikey.create";
         public const string Revoke = "apikey.revoke";
+        public const string Delete = "apikey.delete";
     }
 }

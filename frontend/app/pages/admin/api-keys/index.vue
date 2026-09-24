@@ -65,12 +65,38 @@ async function createApiKey() {
 
 async function revokeApiKey(key: ApiKeyDto) {
   try {
-    await request(`/api/admin/api-keys/${key.id}`, { method: 'DELETE' })
+    await request(`/api/admin/api-keys/${key.id}/revoke`, { method: 'POST' })
     await refreshApiKeys()
     toast.add({ title: 'API key revoked', color: 'success' })
   } catch (error: unknown) {
     const message = (error as { data?: { message?: string } })?.data?.message ?? 'Something went wrong.'
     toast.add({ title: 'Error', description: message, color: 'error' })
+  }
+}
+
+async function deleteApiKey(key: ApiKeyDto) {
+  try {
+    await request(`/api/admin/api-keys/${key.id}`, { method: 'DELETE' })
+    await refreshApiKeys()
+    toast.add({ title: 'API key deleted', color: 'success' })
+  } catch (error: unknown) {
+    const message = (error as { data?: { message?: string } })?.data?.message ?? 'Something went wrong.'
+    toast.add({ title: 'Error', description: message, color: 'error' })
+  }
+}
+
+const pendingAction = ref<{ kind: 'revoke' | 'delete', key: ApiKeyDto } | null>(null)
+const isConfirming = ref(false)
+
+async function confirmPendingAction() {
+  if (!pendingAction.value) return
+  const { kind, key } = pendingAction.value
+  isConfirming.value = true
+  try {
+    await (kind === 'revoke' ? revokeApiKey(key) : deleteApiKey(key))
+  } finally {
+    isConfirming.value = false
+    pendingAction.value = null
   }
 }
 
@@ -117,11 +143,12 @@ const columns: TableColumn<ApiKeyDto>[] = [
   {
     id: 'actions',
     header: '',
-    cell: ({ row }) => row.original.revokedAtUtc
-      ? null
-      : h('div', { class: 'flex justify-end' }, [
-          h(UButton, { size: 'xs', color: 'error', variant: 'ghost', icon: 'i-lucide-ban', onClick: () => revokeApiKey(row.original) }, () => 'Revoke')
-        ])
+    cell: ({ row }) => h('div', { class: 'flex justify-end gap-1' }, [
+      row.original.revokedAtUtc
+        ? null
+        : h(UButton, { size: 'xs', color: 'warning', variant: 'ghost', icon: 'i-lucide-ban', onClick: () => (pendingAction.value = { kind: 'revoke', key: row.original }) }, () => 'Revoke'),
+      h(UButton, { size: 'xs', color: 'error', variant: 'ghost', icon: 'i-lucide-trash-2', onClick: () => (pendingAction.value = { kind: 'delete', key: row.original }) }, () => 'Delete')
+    ])
   }
 ]
 </script>
@@ -186,6 +213,41 @@ const columns: TableColumn<ApiKeyDto>[] = [
             </UButton>
           </div>
         </form>
+      </template>
+    </UModal>
+
+    <UModal
+      :open="!!pendingAction"
+      :title="pendingAction?.kind === 'delete' ? 'Delete API key' : 'Revoke API key'"
+      @update:open="(open) => { if (!open && !isConfirming) pendingAction = null }"
+    >
+      <template #body>
+        <div v-if="pendingAction" class="flex flex-col gap-4">
+          <p v-if="pendingAction.kind === 'revoke'">
+            Revoke <strong>{{ pendingAction.key.name }}</strong>? Anything using this key will immediately
+            get 401 responses. The key stays listed as Revoked and can't be re-enabled.
+          </p>
+          <p v-else>
+            Permanently delete <strong>{{ pendingAction.key.name }}</strong>?
+            <template v-if="!pendingAction.key.revokedAtUtc">
+              It's still active — anything using it will immediately get 401 responses.
+            </template>
+            This can't be undone, and the key will no longer appear in this list.
+          </p>
+          <code class="text-xs text-muted">wdn_{{ pendingAction.key.keyId }}••••{{ pendingAction.key.displaySuffix }}</code>
+          <div class="flex justify-end gap-2">
+            <UButton color="neutral" variant="ghost" :disabled="isConfirming" @click="pendingAction = null">
+              Cancel
+            </UButton>
+            <UButton
+              :color="pendingAction.kind === 'delete' ? 'error' : 'warning'"
+              :loading="isConfirming"
+              @click="confirmPendingAction"
+            >
+              {{ pendingAction.kind === 'delete' ? 'Delete' : 'Revoke' }}
+            </UButton>
+          </div>
+        </div>
       </template>
     </UModal>
 

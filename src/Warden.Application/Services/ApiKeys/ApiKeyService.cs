@@ -94,4 +94,14 @@ public class ApiKeyService(AppDbContext db, ITokenService tokenService, IPermiss
             await db.SaveChangesAsync(ct);
         }
     }
+
+    public async Task DeleteAsync(Guid userId, Guid id, CancellationToken ct = default)
+    {
+        var apiKey = await db.ApiKeys.FirstOrDefaultAsync(k => k.Id == id && k.UserId == userId, ct)
+            ?? throw new NotFoundAppException($"API key '{id}' was not found.");
+
+        // Scopes go with it via the ApiKeyScope FK's cascade delete.
+        db.ApiKeys.Remove(apiKey);
+        await db.SaveChangesAsync(ct);
+    }
 }

@@ -174,15 +174,17 @@ cookie,SSR 才能看到登入狀態)。任何 API 呼叫回傳 401 時,會先靜
 - **權限範圍(Scopes)**:每個 key 有一個以上的權限範圍 — 可以是精確的權限如 `user.read`、模組萬用字元如
   `user.*`,或 `*`。Key 只能**縮小**擁有者的權限,不能擴大:建立時不能授予自己沒有的範圍,而且每次請求都會
   以擁有者*當下*的角色權限與 key 的範圍取交集。因此從擁有者的角色移除某個權限,其所有 key 也會一併失去該權限。
-- **生命週期**:可選擇到期時間(介面上提供 永不 / 30 天 / 90 天 / 1 年),並可隨時撤銷。已撤銷或過期的
+- **生命週期**:可選擇到期時間(介面上提供 永不 / 30 天 / 90 天 / 1 年),可隨時撤銷或刪除。撤銷後 key 仍會保留在列表中(標示為
+  Revoked)以供稽核;刪除則會永久移除 key 及其權限範圍。已撤銷、過期或已刪除的
   key,以及擁有者帳號已停用的 key,都會得到 401。`LastUsedAtUtc` 每個 key 最多每分鐘更新一次。
-- **功能權限**:此功能本身由 `apikey.read`、`apikey.create`、`apikey.revoke` 控管(`apikey.*` 涵蓋三者)。
+- **功能權限**:此功能本身由 `apikey.read`、`apikey.create`、`apikey.revoke`、`apikey.delete` 控管(`apikey.*` 涵蓋全部)。
 
 | 方法 | 路徑 | 所需權限 | 說明 |
 |---|---|---|---|
 | `GET` | `/api/admin/api-keys` | `apikey.read` | 列出自己的 key |
 | `POST` | `/api/admin/api-keys` | `apikey.create` | 建立 key — body 為 `{ "name", "expiresAtUtc", "scopes": [...] }`;回應中包含原始 key(僅此一次) |
-| `DELETE` | `/api/admin/api-keys/{id}` | `apikey.revoke` | 撤銷自己的某個 key |
+| `POST` | `/api/admin/api-keys/{id}/revoke` | `apikey.revoke` | 撤銷自己的某個 key(保留以供稽核) |
+| `DELETE` | `/api/admin/api-keys/{id}` | `apikey.delete` | 永久刪除自己的某個 key |
 
 `wdn_` 前綴**不會**被 `dotnet new warden` 改名;若要使用專案專屬的前綴,請修改
 `Warden.Application/Services/ApiKeys/ApiKeyFormat.cs` 中的 `ApiKeyFormat.Prefix`。

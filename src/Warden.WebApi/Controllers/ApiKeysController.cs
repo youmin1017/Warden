@@ -25,11 +25,19 @@ public class ApiKeysController(IApiKeyService apiKeyService) : ControllerBase
     public async Task<ActionResult<ApiKeyCreatedDto>> Create(CreateApiKeyRequest request, CancellationToken ct)
         => Ok(await apiKeyService.CreateAsync(User.GetUserId(), request, ct));
 
-    [HttpDelete("{id:guid}")]
+    [HttpPost("{id:guid}/revoke")]
     [RequirePermission(PermissionConstants.ApiKeys.Revoke)]
     public async Task<IActionResult> Revoke(Guid id, CancellationToken ct)
     {
         await apiKeyService.RevokeAsync(User.GetUserId(), id, ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}")]
+    [RequirePermission(PermissionConstants.ApiKeys.Delete)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await apiKeyService.DeleteAsync(User.GetUserId(), id, ct);
         return NoContent();
     }
 }

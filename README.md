@@ -189,16 +189,19 @@ is a self-service feature, not an admin view over other users' keys.
   *current* role permissions are intersected with the key's scopes. Removing a permission from
   the owner's role therefore also takes it away from all of their keys.
 - **Lifecycle**: optional expiry (Never / 30 days / 90 days / 1 year in the UI), revocable at any
-  time. Revoked or expired keys, and keys whose owner is disabled, get a 401. `LastUsedAtUtc` is
+  time, and deletable. Revoking keeps the key listed (marked Revoked) for auditing; deleting
+  removes it and its scopes permanently. Revoked, expired or deleted keys, and keys whose owner
+  is disabled, get a 401. `LastUsedAtUtc` is
   updated at most once a minute per key.
-- **Permissions**: the feature itself is gated by `apikey.read`, `apikey.create` and
-  `apikey.revoke` (or `apikey.*` for all three).
+- **Permissions**: the feature itself is gated by `apikey.read`, `apikey.create`, `apikey.revoke`
+  and `apikey.delete` (or `apikey.*` for all of them).
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
 | `GET` | `/api/admin/api-keys` | `apikey.read` | List your own keys |
 | `POST` | `/api/admin/api-keys` | `apikey.create` | Create a key — body `{ "name", "expiresAtUtc", "scopes": [...] }`; the response contains the raw key (only time it's returned) |
-| `DELETE` | `/api/admin/api-keys/{id}` | `apikey.revoke` | Revoke one of your keys |
+| `POST` | `/api/admin/api-keys/{id}/revoke` | `apikey.revoke` | Revoke one of your keys (kept for auditing) |
+| `DELETE` | `/api/admin/api-keys/{id}` | `apikey.delete` | Permanently delete one of your keys |
 
 The `wdn_` prefix is **not** renamed by `dotnet new warden`; change `ApiKeyFormat.Prefix` in
 `Warden.Application/Services/ApiKeys/ApiKeyFormat.cs` if you want a project-specific one.

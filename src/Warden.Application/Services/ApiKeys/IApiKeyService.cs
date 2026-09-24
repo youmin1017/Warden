@@ -11,4 +11,6 @@ public interface IApiKeyService
     Task<ApiKeyCreatedDto> CreateAsync(Guid userId, CreateApiKeyRequest request, CancellationToken ct = default);
 
     Task RevokeAsync(Guid userId, Guid id, CancellationToken ct = default);
+
+    Task DeleteAsync(Guid userId, Guid id, CancellationToken ct = default);
 }
