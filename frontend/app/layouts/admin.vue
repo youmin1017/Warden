@@ -44,6 +44,16 @@ async function handleLogout() {
 
       <div class="flex-1" />
 
+      <UButton
+        to="/"
+        icon="i-lucide-arrow-left"
+        variant="ghost"
+        color="neutral"
+        block
+        class="justify-start"
+      >
+        Back to site
+      </UButton>
       <div class="mb-2 px-2 text-sm text-muted">
         {{ auth.user?.displayName }}
       </div>

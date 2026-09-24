@@ -9,8 +9,8 @@ useHead({
 })
 
 useSeoMeta({
-  title: 'Warden Admin',
-  description: 'Warden admin console'
+  title: 'Warden',
+  description: 'Warden'
 })
 </script>
 

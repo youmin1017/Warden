@@ -11,16 +11,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // code gets exchanged for a session in the first place.
   const isPublicAuthPage = to.path === '/login' || to.path === '/auth/callback'
 
-  if (to.path === '/') {
-    return navigateTo(auth.isAuthenticated ? '/admin' : '/login')
-  }
-
   if (!auth.isAuthenticated && !isPublicAuthPage) {
     return navigateTo('/login')
   }
 
   if (auth.isAuthenticated && isPublicAuthPage) {
-    return navigateTo('/admin')
+    return navigateTo('/')
   }
 
   const requiredPermission = to.meta.permission

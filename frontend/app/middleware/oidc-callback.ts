@@ -20,5 +20,5 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/login?error=oidc_failed')
   }
 
-  return navigateTo('/admin')
+  return navigateTo('/')
 })

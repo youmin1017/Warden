@@ -25,6 +25,6 @@ const displayError = computed(() => {
 
 <template>
   <div class="flex min-h-screen items-center justify-center bg-default">
-    <UError :error="displayError" redirect="/admin" :clear="{ label: '回到首頁' }" />
+    <UError :error="displayError" redirect="/" :clear="{ label: '回到首頁' }" />
   </div>
 </template>
